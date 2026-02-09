@@ -40,14 +40,27 @@ Instead of providing yet another library, SepaQX runs as a **small, hardened ser
 ## 📚 Table of Contents
 
 - [💡 Project Overview](#-project-overview)
+- [🧾 Why SepaQX exists](#-why-sepaqx-exists)
 - [🏦 What is SepaQX?](#-what-is-sepaqx)
 - [⚙️ Features](#-features)
+- [Feature comparison](#feature-comparison)
 - [🚀 API Usage](#-api-usage)
+- [🧪 Example request (fake data)](#-example-request-fake-data)
+- [🧪 Tests](#-tests)
+- [📘 EPC QR standard (fields)](#-epc-qr-standard-fields)
+- [✅ IBAN validation](#-iban-validation)
 - [🔑 API Keys & Customization](#-api-keys--customization)
 - [📁 Server Instance Runtime & Files](#-server-instance-runtime--files)
 - [🛠 Configuration](#-configuration)
+- [📄 Project files](#-project-files)
 - [🔒 Security Notes](#-security-notes)
+- [🔧 API Stability](#-api-stability)
+- [💙 Support the project](#-support-the-project)
 - [✅ Requirements](#-requirements)
+- [🔐 Supply-chain trust](#-supply-chain-trust)
+- [📦 Install via APT (our server)](#-install-via-apt-our-server)
+- [🧱 Build from Git and run as a server instance](#-build-from-git-and-run-as-a-server-instance)
+- [Install latest Go (Linux)](#install-latest-go-linux)
 - [📜 License](#-license)
 - [🤝 Author](#-author)
 
@@ -114,7 +127,7 @@ This eliminates manual input errors and significantly speeds up SEPA payments.
 ## ✅ Requirements
 
 ### Build from source
-- Go 1.22+
+- Go 1.24+
 - Linux (systemd)
 
 ### Install from APT
@@ -178,7 +191,19 @@ Hit: https://install.safe-cap.com/linux/apt stable InRelease
 
 ## 🧱 Build from Git and run as a server instance
 
-Requires Go 1.22+ and systemd.
+Requires Go 1.24+ and systemd.
+
+### Install latest Go (Linux)
+
+```
+cd /tmp
+curl -# -fL https://go.dev/dl/go1.24.0.linux-amd64.tar.gz -o go1.24.0.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf go1.24.0.linux-amd64.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+source ~/.bashrc
+go version
+```
 
 ```
 git clone https://github.com/safe-cap/sepaqx.git sepaqx
