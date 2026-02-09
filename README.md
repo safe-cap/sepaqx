@@ -181,7 +181,7 @@ Hit: https://install.safe-cap.com/linux/apt stable InRelease
 Requires Go 1.22+ and systemd.
 
 ```
-git clone <your-git-url> sepaqx
+git clone https://github.com/safe-cap/sepaqx.git sepaqx
 cd sepaqx
 go build -o sepaqx .
 sudo install -m 0755 sepaqx /usr/bin/sepaqx
