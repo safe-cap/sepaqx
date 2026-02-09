@@ -1,0 +1,29 @@
+name: Bug report
+description: Report a bug or unexpected behavior in SepaQX
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: SepaQX version
+      placeholder: v0.1.x
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Logs / output
+      render: shell
