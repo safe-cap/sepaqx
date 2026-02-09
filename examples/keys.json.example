@@ -1,0 +1,60 @@
+{
+  "keys": [
+    {
+      "key": "example-api-key-1",
+      "name": "client-a",
+      "logo_path": "/opt/sepaqx/assets/logo-a.png",
+      "logo_bg_shape": "circle",
+      "palette": {
+        "fg": "#111111",
+        "bg": "#ffffff"
+      },
+      "fg_gradient": { "from": "#7a5cff", "to": "#3aa8ff", "angle": 45 },
+      "bg_gradient": { "from": "#ffffff", "to": "#eef6ff", "angle": 45 },
+      "corner_radius": 24,
+      "module_style": "blob",
+      "module_radius": 0.5,
+      "quiet_zone": 2
+    },
+    {
+      "key": "example-api-key-2",
+      "name": "client-b",
+      "palette": {
+        "fg": "#222222",
+        "bg": "#ffffff"
+      },
+      "corner_radius": 0,
+      "module_style": "rounded",
+      "module_radius": 0.25,
+      "quiet_zone": 4
+    },
+    {
+      "key": "example-api-key-3",
+      "name": "client-c",
+      "palette": {
+        "fg": "#000000",
+        "bg": "#ffffff"
+      },
+      "fg_gradient": { "from": "#ff7a7a", "to": "#7a5cff", "angle": 90 },
+      "bg_gradient": { "from": "#ffffff", "to": "#fff2f2", "angle": 90 },
+      "corner_radius": 12,
+      "module_style": "blob",
+      "module_radius": 0.4,
+      "quiet_zone": 1
+    },
+    {
+      "key": "example-api-key-4",
+      "name": "client-d",
+      "logo_path": "/opt/sepaqx/assets/logo-b.png",
+      "logo_bg_shape": "square",
+      "palette": {
+        "fg": "#0066ff",
+        "bg": "#eef6ff"
+      },
+      "corner_radius": 18,
+      "module_style": "rounded",
+      "module_radius": 0.35,
+      "quiet_zone": 2
+    }
+  ]
+}

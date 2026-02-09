@@ -1,0 +1,52 @@
+version: 2
+
+project_name: sepaqx
+
+env:
+  - CGO_ENABLED=0
+
+builds:
+  - id: sepaqx
+    main: .
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+      - packaging/systemd/sepaqx.service
+
+checksum:
+  name_template: "SHA256SUMS"
+
+sboms:
+  - id: default
+    artifacts: archive
+
+signs:
+  - id: checksum
+    artifacts: checksum
+    cmd: cosign
+    signature: "${artifact}.sig"
+    args:
+      - sign-blob
+      - --yes
+      - --output-signature
+      - "${signature}"
+      - "${artifact}"
+
+release:
+  prerelease: auto
+  draft: false

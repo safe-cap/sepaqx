@@ -1,0 +1,53 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Build output
+/dist/
+/repo/
+/.pkgbuild*/
+/.bin/
+/bin/
+
+# Go workspace
+go.work
+go.work.sum
+
+# Logs / runtime
+*.log
+*.pid
+*.sock
+*.lock
+/log/
+
+# Env files
+.env
+!examples/.env.example
+!examples/keys.env.example
+
+# Secrets / keys
+/keys.json
+/keys.*.json
+/secrets/
+/secret/
+/tls/
+*.key
+*.pem
+*.p12
+*.crt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/extensions.json

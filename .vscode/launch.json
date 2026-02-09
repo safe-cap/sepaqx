@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "sepaqx (debug)",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "go: build sepaqx",
+      "envFile": "${workspaceFolder}/.env",
+      "args": []
+    }
+  ]
+}
