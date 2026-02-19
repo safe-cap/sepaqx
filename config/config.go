@@ -32,6 +32,7 @@ type Config struct {
 	Commit       string
 	ListenIP     string
 	ListenPort   int
+	QRSize       int
 	KeysFile     string
 	LogoMaxRatio float64
 
@@ -142,6 +143,7 @@ func Load() (*Config, error) {
 	maxBodyBytes := int64(mustEnvInt("MAX_BODY_BYTES", 8<<10, 1<<10, 1<<20))
 	rateRPS := mustEnvFloat("RATE_LIMIT_RPS", 10, 0, 1000000)
 	rateBurst := mustEnvInt("RATE_LIMIT_BURST", 20, 1, 1000000)
+	qrSize := mustEnvInt("QR_SIZE", 512, 512, 2048)
 
 	allowQueryAPIKey := parseBool(strings.TrimSpace(os.Getenv("ALLOW_QUERY_API_KEY")), false)
 	amountLenientOCR := parseBool(strings.TrimSpace(os.Getenv("AMOUNT_LENIENT_OCR")), false)
@@ -167,6 +169,7 @@ func Load() (*Config, error) {
 		Commit:       commit,
 		ListenIP:     ip,
 		ListenPort:   port,
+		QRSize:       qrSize,
 		KeysFile:     keysFile,
 		LogoMaxRatio: ratio,
 

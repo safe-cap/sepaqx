@@ -23,6 +23,7 @@ type Gradient struct {
 type KeyConfig struct {
 	Key          string   `json:"key"`
 	Name         string   `json:"name"`
+	QRSize       int      `json:"qr_size"`
 	LogoPath     string   `json:"logo_path"`
 	LogoBGShape  string   `json:"logo_bg_shape"`
 	Palette      Palette  `json:"palette"`
@@ -100,6 +101,10 @@ func LoadFromFile(path string) (*Store, error) {
 		if k.QuietZone < 0 || k.QuietZone > 20 {
 			log.Printf("keys: invalid quiet_zone, disabling (name=%q, quiet_zone=%v)", k.Name, k.QuietZone)
 			k.QuietZone = 0
+		}
+		if k.QRSize != 0 && (k.QRSize < 512 || k.QRSize > 2048) {
+			log.Printf("keys: invalid qr_size, disabling per-key override (name=%q, qr_size=%v)", k.Name, k.QRSize)
+			k.QRSize = 0
 		}
 
 		byKey[kk] = k

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.2] - 2026-02-19
+- Tests: added dedicated backward-compatibility suite (tests/compatibility.sh) for stable API/CLI contract checks.
+- Tests: extended tests/run.sh with compatibility mode and updated bitmask mapping (compatibility=8 in all mode).
+- CI: added ./tests/run.sh compatibility as a required check in ci.yml.
+- CI: nightly full gate now exports artifacts (format_check.log, go_test.log, run_all.log) and publishes a summary in GitHub Actions.
+- Tests: expanded amount/OCR fuzz property coverage with profile agreement and auto-lenient agreement invariants.
+- Docs: improved README onboarding with a balanced “Get Value in 2 Minutes” entry path and practical use-case framing.
+- Docs: added two ready-to-copy integration snippets (Invoice/PDF query mode and internal API-key + validate flow).
+- Docs/Wiki: synchronized compatibility policy wording and exit-code mapping (compatibility=8) across README and wiki AI contract.
+- Wiki: added short “Start in 2 Minutes” entry section on Home.
+
 ## [0.1.1] - 2026-02-19
 - Validation: improved `amount` parsing for EUR inputs (`30.12`, `30,12`, `EUR 30.12`, `30,12 €`) and explicit rejection of non-EUR markers (e.g. `$`, `USD`).
 - Validation: added optional `AMOUNT_LENIENT_OCR` mode for OCR-like noisy EUR amount formats while keeping non-EUR rejection.

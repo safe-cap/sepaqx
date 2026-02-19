@@ -25,11 +25,33 @@ jobs:
         run: go install mvdan.cc/sh/v3/cmd/shfmt@latest
 
       - name: Format check
-        run: ./tests/format_check.sh
+        run: |
+          mkdir -p artifacts
+          ./tests/format_check.sh | tee artifacts/format_check.log
 
       - name: Go test
-        run: go test ./...
+        run: go test ./... | tee artifacts/go_test.log
 
       - name: Full integration suite
-        run: ./tests/run.sh all
+        run: ./tests/run.sh all | tee artifacts/run_all.log
 
+      - name: Publish nightly summary
+        if: always()
+        run: |
+          {
+            echo "## Nightly Full Gate"
+            echo ""
+            echo "- Workflow date (UTC): $(date -u +'%Y-%m-%d %H:%M:%S')"
+            echo "- Branch: ${GITHUB_REF_NAME}"
+            echo ""
+            echo "### Test Summary"
+            awk '/== Test Summary ==/{flag=1; next} flag{print}' artifacts/run_all.log || true
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload nightly artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-full-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: error

@@ -39,3 +39,6 @@ jobs:
 
       - name: CLI end-to-end
         run: ./tests/run.sh cli-e2e
+
+      - name: Compatibility suite
+        run: ./tests/run.sh compatibility

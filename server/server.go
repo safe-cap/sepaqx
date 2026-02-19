@@ -278,12 +278,17 @@ func (s *Server) handleSEPA(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// QR generation options:
-	// - Public: fixed 512px, ECC=M, margin=4 (library default), no logo, black on transparent.
-	// - Auth:  fixed 512px, ECC=M unless logo is used (then ECC=H), palette/logo only via key.
+	// - Public: size from global QR_SIZE, ECC=M, margin=4 (library default), no logo, black on transparent.
+	// - Auth:  size from global QR_SIZE (or per-key qr_size override), ECC=M unless logo is used (then ECC=H), palette/logo only via key.
 	withLogo := !isPublic && keyCfg.LogoPath != ""
 	opt := qr.DefaultPublicOptions()
+	opt.Size = s.cfg.QRSize
 	if !isPublic {
 		opt = qr.DefaultAuthOptions(withLogo)
+		opt.Size = s.cfg.QRSize
+		if keyCfg.QRSize > 0 {
+			opt.Size = keyCfg.QRSize
+		}
 	}
 
 	cacheKey := buildCacheKey(isPublic, cleaned, keyCfg, s.cfg.LogoMaxRatio, opt)

@@ -3,6 +3,7 @@
     {
       "key": "example-api-key-1",
       "name": "client-a",
+      "qr_size": 1024,
       "logo_path": "/opt/sepaqx/assets/logo-a.png",
       "logo_bg_shape": "circle",
       "palette": {
@@ -19,6 +20,7 @@
     {
       "key": "example-api-key-2",
       "name": "client-b",
+      "qr_size": 768,
       "palette": {
         "fg": "#222222",
         "bg": "#ffffff"

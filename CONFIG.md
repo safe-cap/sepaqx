@@ -12,6 +12,9 @@ For systemd installations, place it at `/etc/sepaqx/.env`.
 
 - `LISTEN_PORT` (default `8089`)
 
+- `QR_SIZE` (default `512`)  
+  Global QR image size in pixels for server-generated PNGs. Allowed range: `512..2048`.
+
 - `KEYS_FILE` (default `./keys.json`)  
   When run as a systemd service, this maps to `/etc/sepaqx/keys.json`.
 
@@ -34,6 +37,10 @@ If keys are missing/invalid in strict modes, service starts in `not ready` state
 
 - `name`  
   Human-friendly label (used in logs).
+
+- `qr_size` (optional, per-key override)  
+  Per-key QR image size in pixels. Allowed range: `512..2048`.  
+  If omitted or invalid, global `QR_SIZE` is used.
 
 - `logo_path` (optional)  
   Path to logo PNG. If unreadable, logo is disabled for this key.
@@ -102,7 +109,7 @@ Timeouts are clamped to `1..600` seconds. Out-of-range values fall back to defau
 ## Validation Limits (API)
 
 - `name`: max 70 characters.
-- `purpose`: max 4 characters (uppercased, not strictly validated).
+- `purpose`: max 4 characters (uppercased, not strictly validated as a closed enum).
 - `remittance_reference`: max 25 characters.
 - `remittance_text`: max 140 characters.
 - `information`: max 70 characters.
@@ -113,6 +120,22 @@ Timeouts are clamped to `1..600` seconds. Out-of-range values fall back to defau
   Supported: `eur_dot`, `eur_comma`, `eur_grouped_space_comma`, `eur_grouped_dot_comma`, `auto_eur_lenient`.
   If set, parsing is strict to that profile. `auto_eur_lenient` requires `AMOUNT_LENIENT_OCR=true`.
 - `remittance_reference` and `remittance_text` are mutually exclusive.
+
+`amount_format` quick meaning:
+- `eur_dot`: decimal dot (`1234.56`)
+- `eur_comma`: decimal comma (`1234,56`)
+- `eur_grouped_space_comma`: grouped with spaces + decimal comma (`1 234,56`)
+- `eur_grouped_dot_comma`: grouped with dots + decimal comma (`1.234,56`)
+- `auto_eur_lenient`: best-effort EUR cleanup for OCR/noisy inputs (only with `AMOUNT_LENIENT_OCR=true`)
+
+`purpose` quick meaning (4-letter ISO 20022/EPC-style purpose code):
+- `GDDS`: goods-related payment
+- `SALA`: salary
+- `PENS`: pension
+- `TAXS`: taxes
+- `SUPP`: supplier payment
+
+Note: current scheme support is `epc_sct` only. Keep `scheme` in requests for forward compatibility with future non-SEPA profiles.
 
 Rate limiting is per client IP (token bucket with `RATE_LIMIT_RPS` and `RATE_LIMIT_BURST`).
 

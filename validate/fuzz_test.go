@@ -2,6 +2,8 @@ package validate
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -109,6 +111,81 @@ func FuzzParseAmountEURNoisyUnicode(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, amount, format string) {
 		_, _ = parseAmountEUR(amount, format)
+	})
+}
+
+func FuzzParseAmountEURProfileAgreement(f *testing.F) {
+	f.Add(int64(49), uint8(90))
+	f.Add(int64(1234), uint8(50))
+	f.Add(int64(1), uint8(5))
+
+	f.Fuzz(func(t *testing.T, whole int64, frac uint8) {
+		if whole < 0 {
+			whole = -whole
+		}
+		whole = whole % 1000000000000 // parser allows up to 12 digits before separator
+		c := int64(frac % 100)
+		want := whole*100 + c
+
+		dot := fmt.Sprintf("%d.%02d", whole, c)
+		comma := fmt.Sprintf("%d,%02d", whole, c)
+
+		spaceGrouped := comma
+		dotGrouped := comma
+		if whole >= 1000 {
+			intPart := fmt.Sprintf("%d", whole)
+			var groups []string
+			for len(intPart) > 3 {
+				groups = append([]string{intPart[len(intPart)-3:]}, groups...)
+				intPart = intPart[:len(intPart)-3]
+			}
+			groups = append([]string{intPart}, groups...)
+			spaceGrouped = strings.Join(groups, " ") + fmt.Sprintf(",%02d", c)
+			dotGrouped = strings.Join(groups, ".") + fmt.Sprintf(",%02d", c)
+		}
+
+		got, err := parseAmountEUR(dot, "eur_dot")
+		if err != nil || got != want {
+			t.Fatalf("eur_dot mismatch for %q: got=%d err=%v want=%d", dot, got, err, want)
+		}
+
+		got, err = parseAmountEUR(comma, "eur_comma")
+		if err != nil || got != want {
+			t.Fatalf("eur_comma mismatch for %q: got=%d err=%v want=%d", comma, got, err, want)
+		}
+
+		got, err = parseAmountEUR(spaceGrouped, "eur_grouped_space_comma")
+		if err != nil || got != want {
+			t.Fatalf("eur_grouped_space_comma mismatch for %q: got=%d err=%v want=%d", spaceGrouped, got, err, want)
+		}
+
+		got, err = parseAmountEUR(dotGrouped, "eur_grouped_dot_comma")
+		if err != nil || got != want {
+			t.Fatalf("eur_grouped_dot_comma mismatch for %q: got=%d err=%v want=%d", dotGrouped, got, err, want)
+		}
+	})
+}
+
+func FuzzParseAmountEURAutoLenientAgreement(f *testing.F) {
+	f.Add(int64(1234), uint8(50))
+	f.Add(int64(10), uint8(5))
+
+	f.Fuzz(func(t *testing.T, whole int64, frac uint8) {
+		if whole < 0 {
+			whole = -whole
+		}
+		whole = whole % 1000000000000
+		c := int64(frac % 100)
+		want := whole*100 + c
+
+		SetAmountLenientOCR(true)
+		defer SetAmountLenientOCR(false)
+
+		noisy := fmt.Sprintf("INV EUR %d,%02d TOTAL", whole, c)
+		got, err := parseAmountEUR(noisy, "auto_eur_lenient")
+		if err != nil || got != want {
+			t.Fatalf("auto_eur_lenient mismatch for %q: got=%d err=%v want=%d", noisy, got, err, want)
+		}
 	})
 }
 
