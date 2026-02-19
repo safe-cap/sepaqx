@@ -17,6 +17,7 @@ func FuzzQueryParsing(f *testing.F) {
 			return
 		}
 		in := validate.Input{
+			Scheme:              q.Get("scheme"),
 			Name:                q.Get("name"),
 			IBAN:                q.Get("iban"),
 			BIC:                 q.Get("bic"),

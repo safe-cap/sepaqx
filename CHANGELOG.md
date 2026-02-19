@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.1] - 2026-02-19
+- Validation: improved `amount` parsing for EUR inputs (`30.12`, `30,12`, `EUR 30.12`, `30,12 €`) and explicit rejection of non-EUR markers (e.g. `$`, `USD`).
+- Validation: added optional `AMOUNT_LENIENT_OCR` mode for OCR-like noisy EUR amount formats while keeping non-EUR rejection.
+- API/CLI: added optional `scheme` field/flag (default `epc_sct`) to prepare future multi-scheme support; currently only `epc_sct` is accepted.
+- API/CLI: added optional `amount_format` (`--amount-format` in CLI) for explicit amount parsing profiles (`eur_dot`, `eur_comma`, grouped variants, `auto_eur_lenient`) to improve noisy/OCR integration reliability.
+- CLI: batch mode now returns a non-zero exit code when at least one item fails, while still printing full per-item results.
+- CLI: batch JSON output now includes top-level summary fields (`ok`, `total`, `succeeded`, `failed`) for automation/AI orchestration.
+- Tests: added CLI tests for JSON batch output, partial-failure batch behavior, and `--format png` batch restriction for `--out -`.
+- Tests: expanded Unicode validation coverage (Cyrillic, Latin with diacritics, Greek, Japanese) and added rune-safe truncation checks.
+- Tests: added CLI end-to-end integration script (`tests/cli_e2e.sh`) and wired it into `tests/run.sh`.
+- Tests: improved `tests/run.sh` output ergonomics in `all` mode (suite totals hidden in the middle, section completion lines + unified final summary).
+- Tests: added machine-readable test summary output via `tests/run.sh --json`.
+- Tests: added explicit suite-aware exit code mapping in `tests/run.sh` (`1` matrix, `2` cli-e2e, `4` load; bitmask in `all` mode).
+- Quality: added `tests/format_check.sh` and CI enforcement for formatting checks across Go, shell, and docs/text files.
+- CI: added quality gates for `./tests/run.sh matrix` and `./tests/run.sh cli-e2e` in pull request checks.
+- CI: added nightly/full gate workflow (`./tests/run.sh all`) on schedule and pushes to `main`.
+- Ops: added `RELEASE_CHECKLIST.md` for repeatable release hygiene.
+- Tests: expanded amount/OCR fuzz/property coverage for format profiles, noisy inputs, and conflicting currency markers.
+- Ops/API: `/readyz` now reflects strict readiness (`200` when ready, `503` with reason when not ready), including JSON response when `Accept: application/json`.
+- Docs: clarified CLI-only install from source (any OS) vs Debian/Ubuntu server install.
+- Docs: refined README/wiki structure and synced README/CONFIG with current behavior (`ALLOW_QUERY_API_KEY` conditions, `/sepa-qr/validate` auth behavior, current CLI JSON fields, amount format rules).
+- Examples: added `ALLOW_QUERY_API_KEY=false` to `examples/.env.example` with a safety note.
+
 ## [0.1.0] - 2026-02-08
 - Added `POST /sepa-qr/validate` for JSON-only validation.
 - Invalid QR inputs now return a static error PNG (customizable via `ERROR_PNG_PATH`).

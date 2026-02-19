@@ -21,7 +21,8 @@ For systemd installations, place it at `/etc/sepaqx/.env`.
 - `REQUIRE_API_KEY` (default `false`)  
   Access control: if true, public access is disabled and every request must include a valid API key from `keys.json`.
 
-Note: `REQUIRE_KEYS` is about startup safety; `REQUIRE_API_KEY` is about request authorization. You can enable both to prevent accidental public mode and to fail fast if keys are missing or invalid.
+Note: `REQUIRE_KEYS` and `REQUIRE_API_KEY` affect readiness and authorization.  
+If keys are missing/invalid in strict modes, service starts in `not ready` state and `/readyz` returns `503` with reason.
 
 - `LOGO_MAX_RATIO` (default `0.22`)  
   Maximum logo size ratio, allowed range: `(0, 0.5)`.
@@ -106,15 +107,25 @@ Timeouts are clamped to `1..600` seconds. Out-of-range values fall back to defau
 - `remittance_text`: max 140 characters.
 - `information`: max 70 characters.
 - `amount`: must be > 0 and <= `99999999999` cents.
+  Accepted input examples: `30.12`, `30,12`, `EUR 30.12`, `30,12 €`.
+  Non-EUR currency markers (e.g. `$`, `USD`) are rejected.
+- `amount_format` (optional): explicit amount parsing profile for noisy integrations.
+  Supported: `eur_dot`, `eur_comma`, `eur_grouped_space_comma`, `eur_grouped_dot_comma`, `auto_eur_lenient`.
+  If set, parsing is strict to that profile. `auto_eur_lenient` requires `AMOUNT_LENIENT_OCR=true`.
 - `remittance_reference` and `remittance_text` are mutually exclusive.
 
 Rate limiting is per client IP (token bucket with `RATE_LIMIT_RPS` and `RATE_LIMIT_BURST`).
 
-## Legacy Behavior
+## API Key in Query
 
 - `ALLOW_QUERY_API_KEY` (default `false`)  
   Allows `api_key` query parameter as an alternative to `X-API-Key` for GET/HEAD.  
   ⚠️ Strong warning: enabling this leaks the API key via URL surfaces (reverse-proxy access logs, browser history, and referrers). Keep disabled unless you fully control all layers and accept the risk.
+
+- `AMOUNT_LENIENT_OCR` (default `false`)  
+  Enables lenient normalization for OCR-like noisy `amount` inputs before strict validation.  
+  Accepts variants like spaced/thousand-separated EUR forms (e.g. `EUR 1 234,50`, `1.234,50 €`).  
+  Non-EUR currencies are still rejected.
 
 ## Trusted Proxies
 

@@ -14,6 +14,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -28,6 +29,8 @@ import (
 type Server struct {
 	cfg        *config.Config
 	keys       *keys.Store
+	ready      bool
+	readyMsg   string
 	httpSrv    *http.Server
 	limiter    *ipLimiter
 	pngCache   *pngCache
@@ -38,8 +41,10 @@ type Server struct {
 
 func New(cfg *config.Config, keyStore *keys.Store, defaultErrorPNG []byte) *Server {
 	s := &Server{
-		cfg:  cfg,
-		keys: keyStore,
+		cfg:      cfg,
+		keys:     keyStore,
+		ready:    true,
+		readyMsg: "ready",
 	}
 
 	mux := http.NewServeMux()
@@ -124,8 +129,38 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
+	if s.ready {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("ready\n"))
+		return
+	}
+	if wantsJSONResponse(r) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":         false,
+			"status":     "not_ready",
+			"reason":     s.readyMsg,
+			"request_id": requestIDFromContext(r.Context()),
+		})
+		return
+	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	_, _ = w.Write([]byte("ready\n"))
+	w.WriteHeader(http.StatusServiceUnavailable)
+	_, _ = w.Write([]byte("not ready: " + s.readyMsg + "\n"))
+}
+
+func (s *Server) SetReadiness(ready bool, reason string) {
+	s.ready = ready
+	if strings.TrimSpace(reason) == "" {
+		if ready {
+			s.readyMsg = "ready"
+		} else {
+			s.readyMsg = "not ready"
+		}
+		return
+	}
+	s.readyMsg = strings.TrimSpace(reason)
 }
 
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
@@ -209,16 +244,14 @@ func (s *Server) handleSEPA(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodGet, http.MethodHead:
 		q := r.URL.Query()
-		in = validate.Input{
-			Name:                q.Get("name"),
-			IBAN:                q.Get("iban"),
-			BIC:                 q.Get("bic"),
-			Amount:              q.Get("amount"),
-			Purpose:             q.Get("purpose"),
-			RemittanceReference: q.Get("remittance_reference"),
-			RemittanceText:      q.Get("remittance_text"),
-			Information:         q.Get("information"),
+		parsedIn, parseErr := inputFromQuery(q)
+		if parseErr != nil {
+			s.logLimiter.Logf(string(CodeInvalidInput), "invalid input: %v", parseErr)
+			field := fieldFromValidationError(parseErr.Error())
+			s.writeError(w, r, CodeInvalidInput, parseErr.Error(), field)
+			return
 		}
+		in = parsedIn
 	}
 
 	cleaned, err := validate.CleanAndValidate(in)
@@ -651,7 +684,18 @@ func newRequestID() string {
 }
 
 func fieldFromValidationError(msg string) string {
+	if strings.HasPrefix(msg, "unsupported currency: ") {
+		return "amount"
+	}
+	if msg == "unsupported amount_format" {
+		return "amount_format"
+	}
+	if strings.HasPrefix(msg, "duplicate query parameter: ") {
+		return strings.TrimSpace(strings.TrimPrefix(msg, "duplicate query parameter: "))
+	}
 	switch msg {
+	case "unsupported scheme":
+		return "scheme"
 	case "name is required":
 		return "name"
 	case "iban is required", "invalid iban":
@@ -667,6 +711,55 @@ func fieldFromValidationError(msg string) string {
 	}
 }
 
+func inputFromQuery(q url.Values) (validate.Input, error) {
+	var in validate.Input
+	var err error
+
+	if in.Scheme, err = singleQueryParam(q, "scheme"); err != nil {
+		return validate.Input{}, err
+	}
+	if in.Name, err = singleQueryParam(q, "name"); err != nil {
+		return validate.Input{}, err
+	}
+	if in.IBAN, err = singleQueryParam(q, "iban"); err != nil {
+		return validate.Input{}, err
+	}
+	if in.BIC, err = singleQueryParam(q, "bic"); err != nil {
+		return validate.Input{}, err
+	}
+	if in.Amount, err = singleQueryParam(q, "amount"); err != nil {
+		return validate.Input{}, err
+	}
+	if in.AmountFormat, err = singleQueryParam(q, "amount_format"); err != nil {
+		return validate.Input{}, err
+	}
+	if in.Purpose, err = singleQueryParam(q, "purpose"); err != nil {
+		return validate.Input{}, err
+	}
+	if in.RemittanceReference, err = singleQueryParam(q, "remittance_reference"); err != nil {
+		return validate.Input{}, err
+	}
+	if in.RemittanceText, err = singleQueryParam(q, "remittance_text"); err != nil {
+		return validate.Input{}, err
+	}
+	if in.Information, err = singleQueryParam(q, "information"); err != nil {
+		return validate.Input{}, err
+	}
+
+	return in, nil
+}
+
+func singleQueryParam(q url.Values, key string) (string, error) {
+	values, ok := q[key]
+	if !ok || len(values) == 0 {
+		return "", nil
+	}
+	if len(values) > 1 {
+		return "", fmt.Errorf("duplicate query parameter: %s", key)
+	}
+	return values[0], nil
+}
+
 func (s *Server) writeError(w http.ResponseWriter, r *http.Request, code ErrorCode, details, field string) {
 	if wantsJSONError(r) {
 		s.writeJSONError(w, code, details, field, requestIDFromContext(r.Context()))
@@ -679,11 +772,12 @@ func wantsJSONError(r *http.Request) bool {
 	if strings.ToLower(strings.TrimSpace(r.URL.Query().Get("format"))) == "json" {
 		return true
 	}
+	return wantsJSONResponse(r)
+}
+
+func wantsJSONResponse(r *http.Request) bool {
 	accept := strings.ToLower(r.Header.Get("Accept"))
-	if strings.Contains(accept, "application/json") && !strings.Contains(accept, "image/png") {
-		return true
-	}
-	return false
+	return strings.Contains(accept, "application/json") && !strings.Contains(accept, "image/png")
 }
 
 func (s *Server) writeJSONError(w http.ResponseWriter, code ErrorCode, details, field, reqID string) {

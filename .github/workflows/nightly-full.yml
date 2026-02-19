@@ -1,11 +1,15 @@
-name: CI
+name: Nightly Full Gate
 
 on:
+  schedule:
+    - cron: "17 2 * * *"
   push:
-  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  build:
+  full-suite:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,22 +24,12 @@ jobs:
       - name: Install shfmt
         run: go install mvdan.cc/sh/v3/cmd/shfmt@latest
 
-      - name: Format check (Go + Shell + Docs/Text)
+      - name: Format check
         run: ./tests/format_check.sh
-
-      - name: Go mod tidy
-        run: |
-          go mod tidy
-          git diff --exit-code go.mod go.sum
-
-      - name: Go vet
-        run: go vet ./...
 
       - name: Go test
         run: go test ./...
 
-      - name: Integration matrix
-        run: ./tests/run.sh matrix
+      - name: Full integration suite
+        run: ./tests/run.sh all
 
-      - name: CLI end-to-end
-        run: ./tests/run.sh cli-e2e

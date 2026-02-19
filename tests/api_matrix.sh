@@ -10,6 +10,7 @@ LISTEN_PORT="${LISTEN_PORT:-18089}"
 export RATE_LIMIT_RPS=1000
 export RATE_LIMIT_BURST=2000
 export ALLOW_QUERY_API_KEY=true
+export AMOUNT_LENIENT_OCR=false
 export KEYS_FILE="${ROOT_DIR}/examples/keys.json.example"
 
 start_server
@@ -77,6 +78,14 @@ health_call() {
   curl -sS -o /dev/null -w "%{http_code}" "${BASE_URL}/health"
 }
 
+ready_call() {
+  curl -sS -o /dev/null -w "%{http_code}" "${BASE_URL}/readyz"
+}
+
+ready_body_with_code() {
+  curl -sS -w "\n%{http_code}" "${BASE_URL}/readyz"
+}
+
 valid_name="Example GmbH"
 valid_iban="DE12500105170648489890"
 valid_bic="INGDDEFFXXX"
@@ -97,6 +106,7 @@ EOF
 
 echo "Smoke: /health"
 expect_status 200 "$(health_call)" "GET /health"
+expect_status 200 "$(ready_call)" "GET /readyz ready"
 
 echo "Options /sepa-qr"
 expect_status 204 "$(options_call)" "OPTIONS /sepa-qr"
@@ -106,6 +116,8 @@ expect_status 200 "$(post_json "$(base_payload)")" "POST valid base"
 
 echo "POST with optional fields"
 expect_status 200 "$(post_json "$(payload_with "\"purpose\":\"GDDS\"")")" "POST purpose"
+expect_status 200 "$(post_json "$(payload_with "\"scheme\":\"epc_sct\"")")" "POST scheme epc_sct"
+expect_status 200 "$(post_json "$(payload_with "\"amount\":\"49,90\",\"amount_format\":\"eur_comma\"")")" "POST amount_format eur_comma"
 expect_status 200 "$(post_json "$(payload_with "\"remittance_reference\":\"RF18539007547034\"")")" "POST remittance_reference"
 expect_status 200 "$(post_json "$(payload_with "\"remittance_text\":\"Order 2026-0001\"")")" "POST remittance_text"
 expect_status 200 "$(post_json "$(payload_with "\"information\":\"Invoice 0001\"")")" "POST information"
@@ -125,6 +137,10 @@ expect_status 400 "$(post_json "{\"name\":\"${valid_name}\",\"iban\":\"${valid_i
 expect_status 400 "$(post_json "{\"name\":\"${valid_name}\",\"iban\":\"${valid_iban}\",\"bic\":\"${valid_bic}\",\"amount\":\"999999999999\"}")" "POST amount too large"
 expect_status 400 "$(post_json "{\"name\":\"${valid_name}\",\"iban\":\"${valid_iban}\",\"bic\":\"${valid_bic}\",\"amount\":\"1.234\"}")" "POST amount precision"
 expect_status 400 "$(post_json "{\"name\":\"${valid_name}\",\"iban\":\"${valid_iban}\",\"bic\":\"${valid_bic}\",\"amount\":\"abc\"}")" "POST amount non-numeric"
+expect_status 400 "$(post_json "{\"scheme\":\"pix\",\"name\":\"${valid_name}\",\"iban\":\"${valid_iban}\",\"bic\":\"${valid_bic}\",\"amount\":\"${valid_amount}\"}")" "POST scheme unsupported"
+expect_status 400 "$(post_json "{\"name\":\"${valid_name}\",\"iban\":\"${valid_iban}\",\"bic\":\"${valid_bic}\",\"amount\":\"49,90\",\"amount_format\":\"eur_dot\"}")" "POST amount_format mismatch"
+expect_status 400 "$(post_json "{\"name\":\"${valid_name}\",\"iban\":\"${valid_iban}\",\"bic\":\"${valid_bic}\",\"amount\":\"49.90\",\"amount_format\":\"custom_profile\"}")" "POST amount_format unsupported"
+expect_status 400 "$(post_json "{\"name\":\"${valid_name}\",\"iban\":\"${valid_iban}\",\"bic\":\"${valid_bic}\",\"amount\":\"1O,5\"}")" "POST amount OCR strict mode"
 expect_status 400 "$(post_json "{bad-json}")" "POST invalid json"
 
 echo "Validation API"
@@ -180,10 +196,56 @@ export RATE_LIMIT_BURST=2000
 start_server
 BASE_URL="$(base_url)"
 
+echo "Readiness strict mode (REQUIRE_KEYS)"
+cleanup
+trap cleanup EXIT
+bad_keys_file="$(mktemp)"
+printf '{bad-json}\n' >"${bad_keys_file}"
+export KEYS_FILE="${bad_keys_file}"
+export REQUIRE_KEYS=true
+start_server
+BASE_URL="$(base_url)"
+resp="$(ready_body_with_code)"
+body="$(printf "%s" "${resp}" | sed '$d')"
+code="$(printf "%s" "${resp}" | tail -n 1)"
+expect_status 503 "${code}" "GET /readyz require keys invalid"
+if ! printf "%s" "${body}" | grep -qi "not ready"; then
+  echo "FAIL: /readyz require keys invalid body"
+  failures=$((failures + 1))
+else
+  echo "OK: /readyz require keys invalid body"
+fi
+
+resp="$(curl -sS -H "Accept: application/json" -w "\n%{http_code}" "${BASE_URL}/readyz")"
+body="$(printf "%s" "${resp}" | sed '$d')"
+code="$(printf "%s" "${resp}" | tail -n 1)"
+expect_status 503 "${code}" "GET /readyz require keys invalid json"
+if ! printf "%s" "${body}" | grep -q '"ok":false'; then
+  echo "FAIL: /readyz require keys invalid json body"
+  failures=$((failures + 1))
+else
+  echo "OK: /readyz require keys invalid json body"
+fi
+
+rm -f "${bad_keys_file}"
+unset REQUIRE_KEYS
+export KEYS_FILE="${ROOT_DIR}/examples/keys.json.example"
+cleanup
+trap cleanup EXIT
+start_server
+BASE_URL="$(base_url)"
+expect_status 200 "$(ready_call)" "GET /readyz ready after valid keys"
+
 echo "GET/HEAD with query"
 qs="name=Example%20GmbH&iban=${valid_iban}&bic=${valid_bic}&amount=49.90"
 expect_status 200 "$(get_query "${qs}")" "GET valid query"
 expect_status 200 "$(head_query "${qs}")" "HEAD valid query"
+expect_status 200 "$(get_query "${qs}&scheme=epc_sct")" "GET scheme epc_sct"
+expect_status 400 "$(get_query "${qs}&amount=50.00")" "GET duplicate amount query"
+qs_comma="name=Example%20GmbH&iban=${valid_iban}&bic=${valid_bic}&amount=49,90"
+expect_status 200 "$(get_query "${qs_comma}&amount_format=eur_comma")" "GET amount_format eur_comma"
+expect_status 400 "$(get_query "${qs_comma}&amount_format=eur_dot")" "GET amount_format mismatch"
+expect_status 400 "$(get_query "${qs}&scheme=pix")" "GET scheme unsupported"
 
 echo "HEAD bare should succeed without params"
 expect_status 200 "$(head_bare)" "HEAD /sepa-qr"
@@ -243,8 +305,12 @@ fi
 cleanup
 trap cleanup EXIT
 unset REQUIRE_API_KEY
+export AMOUNT_LENIENT_OCR=true
 start_server
 BASE_URL="$(base_url)"
+
+echo "Amount lenient OCR mode"
+expect_status 200 "$(post_json "{\"name\":\"${valid_name}\",\"iban\":\"${valid_iban}\",\"bic\":\"${valid_bic}\",\"amount\":\"1O,5\"}")" "POST amount OCR lenient mode"
 
 echo "Error JSON format"
 qs_bad="name=Example%20GmbH&iban=${valid_iban}&bic=${valid_bic}&amount=0&format=json"
@@ -271,8 +337,10 @@ else
   echo "OK: error Accept json body"
 fi
 
-echo
-echo "Total: ${total}, Failures: ${failures}"
+if [[ "${TESTS_HIDE_TOTAL:-0}" != "1" ]]; then
+  echo
+  echo "Total: ${total}, Failures: ${failures}"
+fi
 if [[ "${failures}" -ne 0 ]]; then
   exit 1
 fi

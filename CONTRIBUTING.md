@@ -45,15 +45,22 @@ go mod tidy
 
 ## Code Style
 
-This project follows **standard Go formatting** only.
-
 Before committing **always** run:
 
 ```bash
-gofmt -w .
+./tests/format_check.sh
 ```
 
-Commits that are not `gofmt`‑clean will be rejected by CI.
+This single check validates formatting for:
+- Go (`gofmt`)
+- Shell scripts (`shfmt`)
+- Docs/text files (trailing whitespace check for `md`, `yml/yaml`, `json`, `toml`, `env`, `txt`)
+
+If `shfmt` is missing:
+
+```bash
+go install mvdan.cc/sh/v3/cmd/shfmt@latest
+```
 
 ---
 
@@ -101,7 +108,7 @@ docs: clarify configuration example
 
 When opening a PR:
 
-1. Ensure `gofmt -w .` was run
+1. Ensure `./tests/format_check.sh` passes
 2. Ensure `tests/run.sh` passes
 3. Explain **what** changed and **why**
 4. Reference related issues if applicable

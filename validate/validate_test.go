@@ -12,6 +12,38 @@ func TestCleanAndValidate_Table(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name: "scheme_default_epc_sct",
+			in: Input{
+				Name:   "Example GmbH",
+				IBAN:   "DE12500105170648489890",
+				BIC:    "INGDDEFFXXX",
+				Amount: "49.90",
+			},
+			wantErr: false,
+		},
+		{
+			name: "scheme_explicit_epc_sct",
+			in: Input{
+				Scheme: "epc_sct",
+				Name:   "Example GmbH",
+				IBAN:   "DE12500105170648489890",
+				BIC:    "INGDDEFFXXX",
+				Amount: "49.90",
+			},
+			wantErr: false,
+		},
+		{
+			name: "scheme_unsupported",
+			in: Input{
+				Scheme: "pix",
+				Name:   "Example GmbH",
+				IBAN:   "DE12500105170648489890",
+				BIC:    "INGDDEFFXXX",
+				Amount: "49.90",
+			},
+			wantErr: true,
+		},
+		{
 			name: "valid_basic",
 			in: Input{
 				Name:   "Example GmbH",
@@ -22,9 +54,39 @@ func TestCleanAndValidate_Table(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "unicode_name",
+			name: "unicode_name_cyrillic",
 			in: Input{
-				Name:   "Müller & Сервис",
+				Name:   "Сервис Москва",
+				IBAN:   "DE12500105170648489890",
+				BIC:    "INGDDEFFXXX",
+				Amount: "1",
+			},
+			wantErr: false,
+		},
+		{
+			name: "unicode_name_latin_diacritics",
+			in: Input{
+				Name:   "Muller & François AG",
+				IBAN:   "DE12500105170648489890",
+				BIC:    "INGDDEFFXXX",
+				Amount: "1",
+			},
+			wantErr: false,
+		},
+		{
+			name: "unicode_name_greek",
+			in: Input{
+				Name:   "Αθηνα Tech EE",
+				IBAN:   "DE12500105170648489890",
+				BIC:    "INGDDEFFXXX",
+				Amount: "1",
+			},
+			wantErr: false,
+		},
+		{
+			name: "unicode_name_japanese",
+			in: Input{
+				Name:   "東京株式会社",
 				IBAN:   "DE12500105170648489890",
 				BIC:    "INGDDEFFXXX",
 				Amount: "1",
@@ -49,6 +111,39 @@ func TestCleanAndValidate_Table(t *testing.T) {
 				IBAN:   "DE12500105170648489890",
 				BIC:    "INGDDEFFXXX",
 				Amount: "1.234",
+			},
+			wantErr: true,
+		},
+		{
+			name: "amount_format_explicit_comma_valid",
+			in: Input{
+				Name:         "Example GmbH",
+				IBAN:         "DE12500105170648489890",
+				BIC:          "INGDDEFFXXX",
+				Amount:       "49,90",
+				AmountFormat: "eur_comma",
+			},
+			wantErr: false,
+		},
+		{
+			name: "amount_format_mismatch_invalid",
+			in: Input{
+				Name:         "Example GmbH",
+				IBAN:         "DE12500105170648489890",
+				BIC:          "INGDDEFFXXX",
+				Amount:       "49,90",
+				AmountFormat: "eur_dot",
+			},
+			wantErr: true,
+		},
+		{
+			name: "amount_format_unsupported",
+			in: Input{
+				Name:         "Example GmbH",
+				IBAN:         "DE12500105170648489890",
+				BIC:          "INGDDEFFXXX",
+				Amount:       "49.90",
+				AmountFormat: "custom_profile",
 			},
 			wantErr: true,
 		},
@@ -113,6 +208,9 @@ func TestCleanAndValidate_TruncationAndDefaults(t *testing.T) {
 	if len(cleaned.Name) != 70 {
 		t.Fatalf("expected name truncated to 70, got %d", len(cleaned.Name))
 	}
+	if cleaned.Scheme != "epc_sct" {
+		t.Fatalf("expected default scheme epc_sct, got %q", cleaned.Scheme)
+	}
 	if cleaned.Purpose != "ABCD" {
 		t.Fatalf("expected purpose uppercased+truncated to ABCD, got %q", cleaned.Purpose)
 	}
@@ -121,5 +219,28 @@ func TestCleanAndValidate_TruncationAndDefaults(t *testing.T) {
 	}
 	if cleaned.RemittanceReference != "" || cleaned.RemittanceText != "" {
 		t.Fatalf("expected empty remittance fields")
+	}
+}
+
+func TestCleanAndValidate_UnicodeTruncationByRunes(t *testing.T) {
+	name := strings.Repeat("Ж", 80)
+	info := strings.Repeat("あ", 90)
+
+	cleaned, err := CleanAndValidate(Input{
+		Name:        name,
+		IBAN:        "DE12500105170648489890",
+		BIC:         "INGDDEFFXXX",
+		Amount:      "1",
+		Information: info,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got := len([]rune(cleaned.Name)); got != 70 {
+		t.Fatalf("expected name truncated to 70 runes, got %d", got)
+	}
+	if got := len([]rune(cleaned.Information)); got != 70 {
+		t.Fatalf("expected information truncated to 70 runes, got %d", got)
 	}
 }

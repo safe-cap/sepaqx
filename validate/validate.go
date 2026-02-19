@@ -12,10 +12,12 @@ var (
 )
 
 type Input struct {
+	Scheme              string `json:"scheme"`
 	Name                string `json:"name"`
 	IBAN                string `json:"iban"`
 	BIC                 string `json:"bic"`
 	Amount              string `json:"amount"`
+	AmountFormat        string `json:"amount_format"`
 	Purpose             string `json:"purpose"`
 	RemittanceReference string `json:"remittance_reference"`
 	RemittanceText      string `json:"remittance_text"`
@@ -23,6 +25,7 @@ type Input struct {
 }
 
 type Clean struct {
+	Scheme              string
 	Name                string
 	IBAN                string
 	BIC                 string
@@ -34,6 +37,7 @@ type Clean struct {
 }
 
 func CleanAndValidate(in Input) (*Clean, error) {
+	scheme := strings.ToLower(strings.TrimSpace(in.Scheme))
 	name := strings.TrimSpace(in.Name)
 	purpose := strings.TrimSpace(in.Purpose)
 	remRef := strings.TrimSpace(in.RemittanceReference)
@@ -42,6 +46,13 @@ func CleanAndValidate(in Input) (*Clean, error) {
 
 	iban := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(in.IBAN), " ", ""))
 	bic := strings.ToUpper(strings.TrimSpace(in.BIC))
+
+	if scheme == "" {
+		scheme = "epc_sct"
+	}
+	if scheme != "epc_sct" {
+		return nil, fmt.Errorf("unsupported scheme")
+	}
 
 	if name == "" {
 		return nil, fmt.Errorf("name is required")
@@ -61,7 +72,7 @@ func CleanAndValidate(in Input) (*Clean, error) {
 		return nil, fmt.Errorf("invalid bic")
 	}
 
-	amtCents, err := parseAmountEUR(in.Amount)
+	amtCents, err := parseAmountEUR(in.Amount, in.AmountFormat)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +97,7 @@ func CleanAndValidate(in Input) (*Clean, error) {
 	}
 
 	return &Clean{
+		Scheme:              scheme,
 		Name:                name,
 		IBAN:                iban,
 		BIC:                 bic,

@@ -23,7 +23,92 @@ func FuzzParseAmountEUR(f *testing.F) {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, s string) {
-		_, _ = parseAmountEUR(s)
+		_, _ = parseAmountEUR(s, "")
+	})
+}
+
+func FuzzParseAmountEURWithFormat(f *testing.F) {
+	formats := []string{
+		"",
+		"auto",
+		"eur_dot",
+		"eur_comma",
+		"eur_grouped_space_comma",
+		"eur_grouped_dot_comma",
+		"auto_eur_lenient",
+		"custom_profile",
+	}
+	amounts := []string{
+		"49.90",
+		"49,90",
+		"1 234,50",
+		"1.234,50",
+		"EUR 49.90",
+		"49,90 €",
+		"1O,5",
+		"EUR10USD",
+		"US$ 10.00",
+		"GBP 10,00",
+		"nonsense",
+	}
+	for _, a := range amounts {
+		for _, fm := range formats {
+			f.Add(a, fm)
+		}
+	}
+
+	f.Fuzz(func(t *testing.T, amount, format string) {
+		_, _ = parseAmountEUR(amount, format)
+	})
+}
+
+func FuzzParseAmountEURConflictingCurrencyMarkers(f *testing.F) {
+	conflicts := []string{
+		"EUR10USD",
+		"USD 10 €",
+		"€ 10 $",
+		"US$ EUR 10.00",
+		"EUR 10 GBP",
+		"CHF 10 €",
+	}
+	for _, s := range conflicts {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, s string) {
+		_, _ = parseAmountEUR(s, "")
+		_, _ = parseAmountEUR(s, "auto_eur_lenient")
+	})
+}
+
+func FuzzParseAmountEURNoisyUnicode(f *testing.F) {
+	seeds := []string{
+		"ＥＵＲ １２３,４５",              // fullwidth latin/digits
+		"EUR\u00a0123,45",         // non-breaking space
+		"EUR\u2009123,45",         // thin space
+		"€\u2007123,45",           // figure space
+		"EUR123,45руб",            // glued non-latin suffix
+		"USＤ 10.00",               // mixed-width USD
+		"💸49,90",                  // emoji prefix
+		"INV#2026 EUR49,90 TOTAL", // glued free text
+		"EUR1O,5",                 // OCR O->0 candidate
+		"1\u206649,90\u2069",      // isolate controls
+	}
+	formats := []string{
+		"",
+		"auto",
+		"eur_dot",
+		"eur_comma",
+		"eur_grouped_space_comma",
+		"eur_grouped_dot_comma",
+		"auto_eur_lenient",
+	}
+	for _, s := range seeds {
+		for _, fm := range formats {
+			f.Add(s, fm)
+		}
+	}
+	f.Fuzz(func(t *testing.T, amount, format string) {
+		_, _ = parseAmountEUR(amount, format)
 	})
 }
 

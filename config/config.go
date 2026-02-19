@@ -52,6 +52,7 @@ type Config struct {
 	RateLimitBurst    int
 
 	AllowQueryAPIKey  bool
+	AmountLenientOCR  bool
 	TrustedProxyCIDRs []net.IPNet
 	RequireKeys       bool
 	RequireAPIKey     bool
@@ -143,6 +144,7 @@ func Load() (*Config, error) {
 	rateBurst := mustEnvInt("RATE_LIMIT_BURST", 20, 1, 1000000)
 
 	allowQueryAPIKey := parseBool(strings.TrimSpace(os.Getenv("ALLOW_QUERY_API_KEY")), false)
+	amountLenientOCR := parseBool(strings.TrimSpace(os.Getenv("AMOUNT_LENIENT_OCR")), false)
 	requireKeys := parseBool(strings.TrimSpace(os.Getenv("REQUIRE_KEYS")), false)
 	requireAPIKey := parseBool(strings.TrimSpace(os.Getenv("REQUIRE_API_KEY")), false)
 	accessLog := parseBool(strings.TrimSpace(os.Getenv("ACCESS_LOG")), false)
@@ -184,6 +186,7 @@ func Load() (*Config, error) {
 		RateLimitRPS:      rateRPS,
 		RateLimitBurst:    rateBurst,
 		AllowQueryAPIKey:  allowQueryAPIKey,
+		AmountLenientOCR:  amountLenientOCR,
 		TrustedProxyCIDRs: trustedCIDRs,
 		RequireKeys:       requireKeys,
 		RequireAPIKey:     requireAPIKey,
